@@ -106,7 +106,7 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         //Formatage du mail et envoi
         String mailContent = FormatMailContent(user, survey, linkReadWrite, linkAdmin, linkResult);
         MailSender mailsender = new MailSender();
-        mailsender.sendMessage();
+        mailsender.sendMessage(mailContent);
     }
 
     private String FormatMailContent(User user, Survey survey, String linkReadWrite, String linkAdmin, String linkResult) {
