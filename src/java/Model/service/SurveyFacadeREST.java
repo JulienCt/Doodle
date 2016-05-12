@@ -33,6 +33,8 @@ import Model.service.UserFacadeREST;
 import Model.Survey;
 import Model.User;
 import Utils.MailSender;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 
 import java.util.List;
@@ -77,8 +79,6 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
     @Path("create")
     @Consumes({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
     public void create(SurveyContainer surveyContainer) throws MessagingException {
-        MailSender mailsender = new MailSender();
-        mailsender.sendMessage();
         Survey survey = surveyContainer.getSurvey();
         User user = surveyContainer.getUser();
         Collection<Choice> choiceList = surveyContainer.getChoiceList();
@@ -87,9 +87,9 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         super.create(survey);
         
         //Création des liens associés au sondage
-        CreateLink(user.getUsEmail(), 1, "MD5ReadWrite", TypeLien.ReadWrite.getTypeLien(), 0);
-        CreateLink(user.getUsEmail(), 1, "MD5Admin", TypeLien.Admin.getTypeLien(), 0);
-        CreateLink(user.getUsEmail(), 1, "MD5Result", TypeLien.Result.getTypeLien(), 0);
+        String linkReadWrite = CreateLink(user.getUsEmail(), 1, TypeLien.ReadWrite.getTypeLien(), 0);
+        String linkAdmin = CreateLink(user.getUsEmail(), 1, TypeLien.Admin.getTypeLien(), 0);
+        String linkResult = CreateLink(user.getUsEmail(), 1, TypeLien.Result.getTypeLien(), 0);
         
         //Création des choix
         /*for(Choice choice: choiceList)
@@ -102,6 +102,29 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         {
             CreateUser(user);
         }
+        
+        //Formatage du mail et envoi
+        String mailContent = FormatMailContent(user, survey, linkReadWrite, linkAdmin, linkResult);
+        MailSender mailsender = new MailSender();
+        mailsender.sendMessage();
+    }
+
+    private String FormatMailContent(User user, Survey survey, String linkReadWrite, String linkAdmin, String linkResult) {
+        //Envoie de l'email avec les liens
+        String content = "Bonjour "+user.getUsName()+",\n\n" +
+                "Bravo ! Vous venez de créer votre sondage Doodle\n" +
+                "\""+survey.getSuTitle()+"\"\n\n" +
+                "Voici le lien vers votre sondage :\n" +
+                "      "+linkReadWrite+" \n" +
+                "\n" +
+                "Partagez ce lien avec tous ceux qui devraient voter. N'oubliez pas de\n" +
+                "voter aussi.\n\n" +
+                "Pour administrer le sondage vous pouvez vous rendre à l'adresse suivante : \n " +
+                "      "+linkAdmin+"\n\n" +
+                "Si vous voulez consulter les resultats associés à votre sondage c'est ici : \n " +
+                "      "+linkResult+"\n\n" +
+                "Pensez à conserver ce courriel au cas où vous souhaiteriez modifier le sondage ou consulter les résultats par la suite.";
+        return content;
     }
 
     private void CreateUser(User user) {
@@ -113,9 +136,32 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         choicefacade.create(choice);
     }
 
-    private void CreateLink(String email, int idSurvey, String key, int type, int idReponse) {
+    private String CreateLink(String email, int idSurvey, int type, int idReponse) {
+        String key = GetMD5(email, idSurvey, type);
         Link link = new Link(email, idSurvey, key, type, idReponse);
         linkFacade.create(link);
+        return "http://doodle.com/survey/" + key;
+    }
+    
+    private String GetMD5(String email, int idSurvey, int type)
+    {
+        String md5 = new String();
+        String data = email+idSurvey+type;
+        MessageDigest messageDigest;
+        try {
+            messageDigest = MessageDigest.getInstance("MD5");
+            messageDigest.update(data.getBytes());
+            byte[] messageDigestMD5 = messageDigest.digest();
+            StringBuffer stringBuffer = new StringBuffer();
+            for (byte bytes : messageDigestMD5) {
+                stringBuffer.append(String.format("%02x", bytes & 0xff));
+            }
+            md5 = stringBuffer.toString();
+        } 
+        catch (NoSuchAlgorithmException exception){
+            exception.printStackTrace();
+        }
+        return md5;
     }
 
     @PUT
