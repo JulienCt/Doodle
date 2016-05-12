@@ -43,6 +43,7 @@ import javax.ejb.Stateless;
 import javax.mail.MessagingException;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -106,7 +107,7 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         //Formatage du mail et envoi
         String mailContent = FormatMailContent(user, survey, linkReadWrite, linkAdmin, linkResult);
         MailSender mailsender = new MailSender();
-        mailsender.sendMessage(mailContent);
+        mailsender.sendMessage(mailContent, user.getUsEmail());
     }
 
     private String FormatMailContent(User user, Survey survey, String linkReadWrite, String linkAdmin, String linkResult) {
@@ -182,6 +183,16 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
     public Survey find(@PathParam("id") Integer id) {
         return super.find(id);
+    }
+    
+    @GET
+    @Path("getSurvey/{md5}")
+    @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
+    public Survey findFromMd5(@PathParam("md5") String md5) {
+        Query query = em.createQuery("select s from Link l, Survey s where l.liKey = :md5 and l.liIdsurvey = s.suIdsurvey");
+        query.setParameter("md5", md5);
+        List<Survey> s = query.getResultList();
+        return s.get(0);
     }
 
     @GET

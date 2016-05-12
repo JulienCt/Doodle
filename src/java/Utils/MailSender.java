@@ -21,7 +21,7 @@ import javax.mail.internet.MimeMessage;
 public class MailSender {
     
     
-    public void sendMessage(String content) throws MessagingException
+    public void sendMessage(String content, String emailDestination) throws MessagingException
     {
         final String username = "doodle.noreply.epsi@gmail.com";
         final String password = "qsdfghjklm";
@@ -44,7 +44,7 @@ public class MailSender {
             Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress("doodle.noreply.epsi@gmail.com"));
             message.setRecipients(Message.RecipientType.TO,
-                InternetAddress.parse("doodle.noreply.epsi@gmail.com"));
+                InternetAddress.parse(emailDestination));
             message.setSubject("Doodle : Votre nouveau sondage vient d'être créé");
             message.setText(content);
 
