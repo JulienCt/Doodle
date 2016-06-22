@@ -11,6 +11,7 @@ import Model.Survey;
 import Model.User;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 
 /**
  *
@@ -19,7 +20,7 @@ import java.util.Collection;
 public class SurveyContainer implements Serializable {
     private Survey              survey;
     private User                user;
-    private Collection<Choice>  choiceList;
+    private List<Choice>  choiceList;
     
     public SurveyContainer()
     {
@@ -56,14 +57,14 @@ public class SurveyContainer implements Serializable {
     /**
      * @return the choiceList
      */
-    public Collection<Choice> getChoiceList() {
+    public List<Choice> getChoiceList() {
         return choiceList;
     }
 
     /**
      * @param choiceList the choiceList to set
      */
-    public void setChoiceList(Collection<Choice> choiceList) {
+    public void setChoiceList(List<Choice> choiceList) {
         this.choiceList = choiceList;
     }
 

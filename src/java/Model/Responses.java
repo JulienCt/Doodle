@@ -56,6 +56,11 @@ public class Responses implements Serializable {
 
     public Responses() {
     }
+    
+    public Responses(String nameParticipant, Integer idReponse) {
+        reIdresponse = idReponse;
+        reNameparticipant = nameParticipant;
+    }
 
     public Responses(Integer reIdresponse) {
         this.reIdresponse = reIdresponse;

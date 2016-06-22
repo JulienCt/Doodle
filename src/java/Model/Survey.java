@@ -39,7 +39,8 @@ import javax.xml.bind.annotation.XmlTransient;
     @NamedQuery(name = "Survey.findBySuIsvoteeditable", query = "SELECT s FROM Survey s WHERE s.suIsvoteeditable = :suIsvoteeditable"),
     @NamedQuery(name = "Survey.findBySuEmailonparticipation", query = "SELECT s FROM Survey s WHERE s.suEmailonparticipation = :suEmailonparticipation"),
     @NamedQuery(name = "Survey.findBySuEmailoncomment", query = "SELECT s FROM Survey s WHERE s.suEmailoncomment = :suEmailoncomment"),
-    @NamedQuery(name = "Survey.findBySuIsresultpublic", query = "SELECT s FROM Survey s WHERE s.suIsresultpublic = :suIsresultpublic")})
+    @NamedQuery(name = "Survey.findBySuIsresultpublic", query = "SELECT s FROM Survey s WHERE s.suIsresultpublic = :suIsresultpublic")
+})
 public class Survey implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -195,6 +196,18 @@ public class Survey implements Serializable {
     @Override
     public String toString() {
         return "Model.Survey[ suIdsurvey=" + suIdsurvey + " ]";
+    }
+    
+    public Choice getChoiceById(int id)
+    {
+        Choice choice = null;
+        for(Choice c : choiceCollection)
+        {
+            if (c.getChIdchoice().equals(id)) {
+                choice = c;
+            }
+        }
+        return choice;
     }
     
 }

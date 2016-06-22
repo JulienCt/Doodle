@@ -61,7 +61,7 @@ public class Choice implements Serializable {
 
     public Choice() {
     }
-
+    
     public Choice(Integer chIdchoice) {
         this.chIdchoice = chIdchoice;
     }
@@ -118,6 +118,11 @@ public class Choice implements Serializable {
 
     public void setResponsesCollection(Collection<Responses> responsesCollection) {
         this.responsesCollection = responsesCollection;
+    }
+    
+    public void addReponseToListReponse(Responses reponse)
+    {
+        responsesCollection.add(reponse);
     }
 
     @Override

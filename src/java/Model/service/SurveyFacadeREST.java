@@ -13,7 +13,11 @@
 	"user": {
 		"usName": "BIpBIP",
 		"usEmail": "EMAIL@BIPBiP"
-	}
+	},
+        "choiceList": [
+                {"choice": { "chTitle": "Oui"}},
+                {"choice": { "chTitle": "NON"}}
+        ]
 }*/
 
 /*
@@ -27,6 +31,7 @@ import Model.Choice;
 import Model.Container.SurveyContainer;
 import Model.Link;
 import Model.Link.TypeLien;
+import Model.Responses;
 import Model.service.LinkFacadeREST;
 import Model.service.ChoiceFacadeREST;
 import Model.service.UserFacadeREST;
@@ -44,6 +49,7 @@ import javax.mail.MessagingException;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
+import javax.persistence.criteria.CriteriaBuilder;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -71,6 +77,8 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
     private ChoiceFacadeREST choicefacade;
     @EJB
     private LinkFacadeREST linkFacade;
+    @EJB
+    private ResponsesFacadeREST reponseFacade;
 
     public SurveyFacadeREST() {
         super(Survey.class);
@@ -82,7 +90,16 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
     public void create(SurveyContainer surveyContainer) throws MessagingException {
         Survey survey = surveyContainer.getSurvey();
         User user = surveyContainer.getUser();
-        Collection<Choice> choiceList = surveyContainer.getChoiceList();
+        List<Choice> choiceList = surveyContainer.getChoiceList();
+        
+        Query qr = em.createNamedQuery("User.findByEmail");
+        qr.setParameter("usEmail", user.getUsEmail());
+        List<User> users = (List<User>) qr.getResultList();
+        
+        if(users.isEmpty())
+        {
+            CreateUser(user);
+        }
         
         //Creation du sondage en base
         super.create(survey);
@@ -93,24 +110,23 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         String linkResult = CreateLink(user.getUsEmail(), 1, TypeLien.Result.getTypeLien(), 0);
         
         //Création des choix
-        /*for(Choice choice: choiceList)
+        for(Choice choice: choiceList)
         {
             CreateChoice(choice.getChTitle(), survey);
-        }*/
-        
-        //Création de l'utilisateur si il n'éxiste pas
-        if(true)
-        {
-            CreateUser(user);
         }
         
         //Formatage du mail et envoi
-        String mailContent = FormatMailContent(user, survey, linkReadWrite, linkAdmin, linkResult);
-        MailSender mailsender = new MailSender();
-        mailsender.sendMessage(mailContent, user.getUsEmail());
+        String mailContent = FormatCreateMailContent(user, survey, linkReadWrite, linkAdmin, linkResult);
+        sendMail(mailContent, user.getUsEmail());
     }
-
-    private String FormatMailContent(User user, Survey survey, String linkReadWrite, String linkAdmin, String linkResult) {
+    
+    private void sendMail(String mailContent, String mailReceiver) throws MessagingException
+    {
+        MailSender mailsender = new MailSender();
+        mailsender.sendMessage(mailContent, mailReceiver);
+    }
+    
+    private String FormatCreateMailContent(User user, Survey survey, String linkReadWrite, String linkAdmin, String linkResult) {
         //Envoie de l'email avec les liens
         String content = "Bonjour "+user.getUsName()+",\n\n" +
                 "Bravo ! Vous venez de créer votre sondage Doodle\n" +
@@ -125,6 +141,18 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
                 "Si vous voulez consulter les resultats associés à votre sondage c'est ici : \n " +
                 "      "+linkResult+"\n\n" +
                 "Pensez à conserver ce courriel au cas où vous souhaiteriez modifier le sondage ou consulter les résultats par la suite.";
+        return content;
+    }
+    
+    private String FormatVoteMailContent(String nameParticipant, Survey survey, String link) {
+        //Envoie de l'email avec les liens
+        String content = "Bonjour "+nameParticipant+",\n\n" +
+                "Bravo ! Vous venez de répondre à un sondage Doodle\n" +
+                "\""+survey.getSuTitle()+"\"\n\n" +
+                "Voici le lien pour éditer votre réponse :\n" +
+                "      "+link+" \n" +
+                "\n" +
+                "Pensez à conserver ce courriel au cas où vous souhaiteriez modifier votre réponse par la suite.";
         return content;
     }
 
@@ -164,6 +192,33 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         }
         return md5;
     }
+    
+    @GET
+    @Path("getSurvey/{md5}")
+    @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
+    public Survey findFromMd5(@PathParam("md5") String md5) {
+        Query query = em.createNamedQuery("Link.findByLiKey");
+        query.setParameter("liKey", md5);
+        List<Link> links = (List<Link>)query.getResultList();
+        
+        Link link = links.get(0);
+        Survey survey = super.find(link.getLiIdsurvey());
+        
+        return survey;
+    }
+    
+    @GET
+    @Path("addReponseToSurvey/{choiceId}/{participantName}/{participantMail}")
+    @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
+    public void addReponseToSurvey(@PathParam("choiceId") String choiceId, @PathParam("participantMail") String participantMail, @PathParam("participantName") String participantName ) throws MessagingException {
+        Responses reponse = new Responses(participantName, Integer.parseInt(choiceId));
+        reponseFacade.create(reponse);
+        Choice choice = choicefacade.find(choiceId);
+        Survey survey = super.find(choice.getSuIdsurvey());
+        String linkVote = CreateLink(participantMail, 1, TypeLien.ReadWrite.getTypeLien(), 0);
+        String content = FormatVoteMailContent(participantName, survey,linkVote);
+        sendMail(content, participantMail);
+    }
 
     @PUT
     @Path("{id}")
@@ -185,16 +240,7 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
         return super.find(id);
     }
     
-    @GET
-    @Path("getSurvey/{md5}")
-    @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    public Survey findFromMd5(@PathParam("md5") String md5) {
-        Query query = em.createQuery("select s from Link l, Survey s where l.liKey = :md5 and l.liIdsurvey = s.suIdsurvey");
-        query.setParameter("md5", md5);
-        List<Survey> s = query.getResultList();
-        return s.get(0);
-    }
-
+   
     @GET
     @Override
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
@@ -220,5 +266,4 @@ public class SurveyFacadeREST extends AbstractFacade<Survey> {
     protected EntityManager getEntityManager() {
         return em;
     }
-    
 }
